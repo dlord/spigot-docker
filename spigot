@@ -104,4 +104,4 @@ MINECRAFT_OPTS=${MINECRAFT_OPTS:-"-server -Xmx1024m -XX:MaxPermSize=256m -XX:+Us
 pushd $MINECRAFT_HOME > /dev/null
 echo "Running Minecraft"
 echo "MINECRAFT_OPTS: $MINECRAFT_OPTS"
-exec gosu minecraft java $MINECRAFT_OPTS -jar $MINECRAFT_HOME/$MINECRAFT_STARTUP_JAR nogui
+exec gosu minecraft java $MINECRAFT_OPTS -jar $MINECRAFT_HOME/$MINECRAFT_STARTUP_JAR --noconsole
