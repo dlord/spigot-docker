@@ -25,4 +25,5 @@ EXPOSE 25565
 
 VOLUME ["/opt/minecraft", "/var/lib/minecraft"]
 
-CMD ["/usr/local/bin/spigot"]
+ENTRYPOINT ["/usr/local/bin/spigot"]
+CMD ["run"]

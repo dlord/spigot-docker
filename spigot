@@ -4,105 +4,135 @@ SPIGOT_BUILDTOOLS_URL="https://hub.spigotmc.org/jenkins/job/BuildTools/lastSucce
 MINECRAFT_VERSION=${MINECRAFT_VERSION:-1.8.8}
 MINECRAFT_JAR=${MINECRAFT_JAR:-"spigot-$MINECRAFT_VERSION.jar"}
 MINECRAFT_STARTUP_JAR=${MINECRAFT_STARTUP_JAR:-"$MINECRAFT_JAR"}
-MINECRAFT_SERVER_URL="https://s3.amazonaws.com/Minecraft.Download/versions/$MINECRAFT_VERSION/$MINECRAFT_JAR"
-
-# Agree to EULA.
-if [ "$MINECRAFT_EULA" == "true" ]; then
-    echo "Updating $MINECRAFT_HOME/eula.txt"
-    echo "eula=$MINECRAFT_EULA" > $MINECRAFT_HOME/eula.txt
-else
-    >&2 echo "Mojang requires you to accept their EULA. You need to set the MINECRAFT_EULA variable to true."
-    exit 1
-fi
-
-# Do not allow to run if there is no DEFAULT_OP
-if [ -z "$DEFAULT_OP" ]; then
-    >&2 echo "DEFAULT_OP is required. Please set this variable to continue."
-    exit 1
-fi
-
-# Compile spigot if it does not exist.
-if [ ! -f "$MINECRAFT_HOME/$MINECRAFT_JAR" ]; then
-    echo "Building Spigot" && \
-        mkdir -p /tmp/spigot && \
-        curl -S $SPIGOT_BUILDTOOLS_URL -o /tmp/spigot/BuildTools.jar && \
-        pushd /tmp/spigot > /dev/null && \
-        java -jar BuildTools.jar --rev $MINECRAFT_VERSION && \
-        cp /tmp/spigot/craftbukkit-*.jar  /tmp/spigot/spigot-*.jar $MINECRAFT_HOME && \
-        popd > /dev/null && \
-        rm -rf /tmp/spigot
-
-    if [ $? -ne 0 ]; then
-        >&2 echo "Unable to build Spigot."
-        exit 1
-    fi
-fi
-
-# Update server.properties
-LEVEL_NAME=${LEVEL_NAME:-world}
-
-if [ ! -z "$WORLD_DIR" ]; then
-    # UGLY HACK BECAUSE MINECRAFT IS STUPID! IT DOES NOT USE RELATIVE PATHS!
-    # MINECRAFT ALWAYS APPENDS ./ IN FRONT OF THE WORLD PATH!!!!!!!
-    # I assume that the Minecraft installation is in a second level dir from
-    # root (e.g. /opt/minecraft)
-    # Will need to find a better way.
-    LEVEL_NAME="../../$WORLD_DIR/$LEVEL_NAME"
-fi
-
-if [ ! -f "$MINECRAFT_HOME/server.properties" ]; then
-    echo "Creating $MINECRAFT_HOME/server.properties"
-    echo "generator-settings=$GENERATOR_SETTINGS" >> $MINECRAFT_HOME/server.properties
-    echo "op-permission-level=${OP_PERMISSION_LEVEL:-4}" >> $MINECRAFT_HOME/server.properties
-    echo "allow-nether=${ALLOW_NETHER:-true}" >> $MINECRAFT_HOME/server.properties
-    echo "level-name=$LEVEL_NAME" >> $MINECRAFT_HOME/server.properties
-    echo "enable-query=${ENABLE_QUERY:-false}" >> $MINECRAFT_HOME/server.properties
-    echo "allow-flight=${ALLOW_FLIGHT:-false}" >> $MINECRAFT_HOME/server.properties
-    echo "announce-player-achievements=${ANNOUNCE_PLAYER_ACHIEVEMENTS:-true}" >> $MINECRAFT_HOME/server.properties
-    echo "server-port=25565" >> $MINECRAFT_HOME/server.properties
-    echo "level-type=${LEVEL_TYPE:-DEFAULT}" >> $MINECRAFT_HOME/server.properties
-    echo "enable-rcon=${ENABLE_RCON:-false}" >> $MINECRAFT_HOME/server.properties
-    echo "force-gamemode=${FORCE_GAMEMODE:-false}" >> $MINECRAFT_HOME/server.properties
-    echo "level-seed=$LEVEL_SEED" >> $MINECRAFT_HOME/server.properties
-    echo "server-ip=$SERVER_IP" >> $MINECRAFT_HOME/server.properties
-    echo "max-build-height=${MAX_BUILD_HEIGHT:-256}" >> $MINECRAFT_HOME/server.properties
-    echo "spawn-npcs=${SPAWN_NPCS:-true}" >> $MINECRAFT_HOME/server.properties
-    echo "white-list=${WHITE_LIST:-true}" >> $MINECRAFT_HOME/server.properties
-    echo "spawn-animals=${SPAWN_ANIMALS:-true}" >> $MINECRAFT_HOME/server.properties
-    echo "snooper-enabled=${SNOOPER_ENABLED:-true}" >> $MINECRAFT_HOME/server.properties
-    echo "online-mode=${ONLINE_MODE:-true}" >> $MINECRAFT_HOME/server.properties
-    echo "resource-pack=$RESOURCE_PACK" >> $MINECRAFT_HOME/server.properties
-    echo "pvp=${PVP:-true}" >> $MINECRAFT_HOME/server.properties
-    echo "difficulty=${DIFFICULTY:-2}" >> $MINECRAFT_HOME/server.properties
-    echo "enable-command-block=${ENABLE_COMMAND_BLOCK:-true}" >> $MINECRAFT_HOME/server.properties
-    echo "player-idle-timeout=${PLAYER_IDLE_TIMEOUT:-0}" >> $MINECRAFT_HOME/server.properties
-    echo "gamemode=${GAMEMODE:-0}" >> $MINECRAFT_HOME/server.properties
-    echo "max-players=${MAX_PLAYERS:-20}" >> $MINECRAFT_HOME/server.properties
-    echo "spawn-monsters=${SPAWN_MONSTERS:-true}" >> $MINECRAFT_HOME/server.properties
-    echo "view-distance=${VIEW_DISTANCE:-10}" >> $MINECRAFT_HOME/server.properties
-    echo "generate-structures=${GENERATE_STRUCTURES:-true}" >> $MINECRAFT_HOME/server.properties
-fi
-
-# Copy world template if level folder is empty.
-if ! find $WORLD_DIR -mindepth 1 -print -quit | grep -q . && { find $MINECRAFT_HOME/world -mindepth 1 -print -quit | grep -q .; }; then
-    echo "World template found in $MINECRAFT_HOME/world"
-    echo "Creating new world in $WORLD_DIR"
-    cp -rf $MINECRAFT_HOME/world $WORLD_DIR
-fi
-
-# Create default ops.txt if ops.json does not exist yet.
-if [ ! -f $MINECRAFT_HOME/ops.json ]; then
-    echo "Adding $DEFAULT_OP to ops list."
-    echo "$DEFAULT_OP" > $MINECRAFT_HOME/ops.txt
-    echo "$DEFAULT_OP" > $MINECRAFT_HOME/white-list.txt
-fi
-
-# Make sure the MINECRAFT_HOME and WORLD_DIR folders are owned by minecraft user.
-chown -R minecraft:minecraft $MINECRAFT_HOME $WORLD_DIR
-
 MINECRAFT_OPTS=${MINECRAFT_OPTS:-"-server -Xmx1024m -XX:MaxPermSize=256m -XX:+UseParNewGC -XX:+UseConcMarkSweepGC"}
 
-pushd $MINECRAFT_HOME > /dev/null
-echo "Running Minecraft"
-echo "MINECRAFT_OPTS: $MINECRAFT_OPTS"
-exec gosu minecraft java $MINECRAFT_OPTS -jar $MINECRAFT_HOME/$MINECRAFT_STARTUP_JAR --noconsole
+check_env() {
+    # Agree to EULA.
+    if [ "$MINECRAFT_EULA" == "true" ]; then
+        echo "Updating $MINECRAFT_HOME/eula.txt"
+        echo "eula=$MINECRAFT_EULA" > $MINECRAFT_HOME/eula.txt
+    else
+        >&2 echo "Mojang requires you to accept their EULA. You need to set the MINECRAFT_EULA variable to true."
+        exit 1
+    fi
+
+    # Do not allow to run if there is no DEFAULT_OP
+    if [ -z "$DEFAULT_OP" ]; then
+        >&2 echo "DEFAULT_OP is required. Please set this variable to continue."
+        exit 1
+    fi
+}
+
+build_server() {
+    # Compile spigot if it does not exist.
+    if [ ! -f "$MINECRAFT_HOME/$MINECRAFT_JAR" ]; then
+        echo "Building Spigot" && \
+            mkdir -p /tmp/spigot && \
+            curl -S $SPIGOT_BUILDTOOLS_URL -o /tmp/spigot/BuildTools.jar && \
+            pushd /tmp/spigot > /dev/null && \
+            java -jar BuildTools.jar --rev $MINECRAFT_VERSION && \
+            cp /tmp/spigot/craftbukkit-*.jar  /tmp/spigot/spigot-*.jar $MINECRAFT_HOME && \
+            popd > /dev/null && \
+            rm -rf /tmp/spigot
+
+        if [ $? -ne 0 ]; then
+            >&2 echo "Unable to build Spigot."
+            exit 1
+        fi
+    fi
+}
+
+first_run() {
+    # Update server.properties
+    LEVEL_NAME=${LEVEL_NAME:-world}
+
+    if [ ! -z "$WORLD_DIR" ]; then
+        # UGLY HACK BECAUSE MINECRAFT IS STUPID! IT DOES NOT USE RELATIVE PATHS!
+        # MINECRAFT ALWAYS APPENDS ./ IN FRONT OF THE WORLD PATH!!!!!!!
+        # I assume that the Minecraft installation is in a second level dir from
+        # root (e.g. /opt/minecraft)
+        # Will need to find a better way.
+        LEVEL_NAME="../../$WORLD_DIR/$LEVEL_NAME"
+    fi
+
+    if [ ! -f "$MINECRAFT_HOME/server.properties" ]; then
+        echo "Creating $MINECRAFT_HOME/server.properties"
+        echo "generator-settings=$GENERATOR_SETTINGS" >> $MINECRAFT_HOME/server.properties
+        echo "op-permission-level=${OP_PERMISSION_LEVEL:-4}" >> $MINECRAFT_HOME/server.properties
+        echo "allow-nether=${ALLOW_NETHER:-true}" >> $MINECRAFT_HOME/server.properties
+        echo "level-name=$LEVEL_NAME" >> $MINECRAFT_HOME/server.properties
+        echo "enable-query=${ENABLE_QUERY:-false}" >> $MINECRAFT_HOME/server.properties
+        echo "allow-flight=${ALLOW_FLIGHT:-false}" >> $MINECRAFT_HOME/server.properties
+        echo "announce-player-achievements=${ANNOUNCE_PLAYER_ACHIEVEMENTS:-true}" >> $MINECRAFT_HOME/server.properties
+        echo "server-port=25565" >> $MINECRAFT_HOME/server.properties
+        echo "level-type=${LEVEL_TYPE:-DEFAULT}" >> $MINECRAFT_HOME/server.properties
+        echo "enable-rcon=${ENABLE_RCON:-false}" >> $MINECRAFT_HOME/server.properties
+        echo "force-gamemode=${FORCE_GAMEMODE:-false}" >> $MINECRAFT_HOME/server.properties
+        echo "level-seed=$LEVEL_SEED" >> $MINECRAFT_HOME/server.properties
+        echo "server-ip=$SERVER_IP" >> $MINECRAFT_HOME/server.properties
+        echo "max-build-height=${MAX_BUILD_HEIGHT:-256}" >> $MINECRAFT_HOME/server.properties
+        echo "spawn-npcs=${SPAWN_NPCS:-true}" >> $MINECRAFT_HOME/server.properties
+        echo "white-list=${WHITE_LIST:-true}" >> $MINECRAFT_HOME/server.properties
+        echo "spawn-animals=${SPAWN_ANIMALS:-true}" >> $MINECRAFT_HOME/server.properties
+        echo "snooper-enabled=${SNOOPER_ENABLED:-true}" >> $MINECRAFT_HOME/server.properties
+        echo "online-mode=${ONLINE_MODE:-true}" >> $MINECRAFT_HOME/server.properties
+        echo "resource-pack=$RESOURCE_PACK" >> $MINECRAFT_HOME/server.properties
+        echo "pvp=${PVP:-true}" >> $MINECRAFT_HOME/server.properties
+        echo "difficulty=${DIFFICULTY:-2}" >> $MINECRAFT_HOME/server.properties
+        echo "enable-command-block=${ENABLE_COMMAND_BLOCK:-true}" >> $MINECRAFT_HOME/server.properties
+        echo "player-idle-timeout=${PLAYER_IDLE_TIMEOUT:-0}" >> $MINECRAFT_HOME/server.properties
+        echo "gamemode=${GAMEMODE:-0}" >> $MINECRAFT_HOME/server.properties
+        echo "max-players=${MAX_PLAYERS:-20}" >> $MINECRAFT_HOME/server.properties
+        echo "spawn-monsters=${SPAWN_MONSTERS:-true}" >> $MINECRAFT_HOME/server.properties
+        echo "view-distance=${VIEW_DISTANCE:-10}" >> $MINECRAFT_HOME/server.properties
+        echo "generate-structures=${GENERATE_STRUCTURES:-true}" >> $MINECRAFT_HOME/server.properties
+    fi
+
+    # Copy world template if level folder is empty.
+    if ! find $WORLD_DIR -mindepth 1 -print -quit | grep -q . && { find $MINECRAFT_HOME/world -mindepth 1 -print -quit | grep -q .; }; then
+        echo "World template found in $MINECRAFT_HOME/world"
+        echo "Creating new world in $WORLD_DIR"
+        cp -rf $MINECRAFT_HOME/world $WORLD_DIR
+    fi
+
+    # Create default ops.txt if ops.json does not exist yet.
+    if [ ! -f $MINECRAFT_HOME/ops.json ]; then
+        echo "Adding $DEFAULT_OP to ops list."
+        echo "$DEFAULT_OP" > $MINECRAFT_HOME/ops.txt
+        echo "$DEFAULT_OP" > $MINECRAFT_HOME/white-list.txt
+    fi
+}
+
+update_permissions() {
+    echo "Updating file permissions"
+    chown -R minecraft:minecraft $MINECRAFT_HOME $WORLD_DIR
+}
+
+run_spigot() {
+    if [ -z "$TERM" ]; then
+        echo "No term detected. Switching to noconsole mode."
+        CONSOLE_MODE="--noconsole"
+    fi
+
+    pushd $MINECRAFT_HOME > /dev/null
+    echo "Running Minecraft"
+    echo "MINECRAFT_OPTS: $MINECRAFT_OPTS"
+    exec gosu minecraft java $MINECRAFT_OPTS -jar $MINECRAFT_HOME/$MINECRAFT_STARTUP_JAR $CONSOLE_MODE $@
+}
+
+case "$1" in
+    run)
+        shift 1
+        check_env
+        build_server
+        first_run
+        update_permissions
+        run_spigot $@
+        ;;
+    permissions)
+        shift 1
+        update_permissions
+        ;;
+    *)
+        exec "$@"
+esac
