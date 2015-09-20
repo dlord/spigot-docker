@@ -109,15 +109,15 @@ update_permissions() {
 }
 
 run_spigot() {
-    if [ -z "$TERM" ]; then
-        echo "No term detected. Switching to noconsole mode."
+    if [ "$TERM" == "dumb" ]; then
+        echo "Dumb term detected. Switching to noconsole mode."
         CONSOLE_MODE="--noconsole"
     fi
 
     pushd $MINECRAFT_HOME > /dev/null
     echo "Running Minecraft"
     echo "MINECRAFT_OPTS: $MINECRAFT_OPTS"
-    exec gosu minecraft java $MINECRAFT_OPTS -jar $MINECRAFT_HOME/$MINECRAFT_STARTUP_JAR $CONSOLE_MODE $@
+    exec gosu minecraft java $MINECRAFT_OPTS -jar $MINECRAFT_HOME/$MINECRAFT_STARTUP_JAR nogui $CONSOLE_MODE $@
 }
 
 case "$1" in
