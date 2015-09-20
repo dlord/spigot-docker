@@ -28,7 +28,7 @@ if [ ! -f "$MINECRAFT_HOME/$MINECRAFT_JAR" ]; then
         curl -S $SPIGOT_BUILDTOOLS_URL -o /tmp/spigot/BuildTools.jar && \
         pushd /tmp/spigot > /dev/null && \
         java -jar BuildTools.jar --rev $MINECRAFT_VERSION && \
-        cp /tmp/spigot/craftbukkit-$MINECRAFT_VERSION.jar  /tmp/spigot/spigot-$MINECRAFT_VERSION.jar $MINECRAFT_HOME && \
+        cp /tmp/spigot/craftbukkit-*.jar  /tmp/spigot/spigot-*.jar $MINECRAFT_HOME && \
         popd > /dev/null && \
         rm -rf /tmp/spigot
 
