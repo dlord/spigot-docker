@@ -43,6 +43,12 @@ build_server() {
 }
 
 first_run() {
+    # Sync files from /etc/minecraft to $MINECRAFT_HOME. Do this on container's first run.
+    if [ -f "/run/first_time" ]; then
+        rsync -avhP /etc/minecraft/ $MINECRAFT_HOME
+        rm /run/first_time
+    fi
+
     # Update server.properties
     LEVEL_NAME=${LEVEL_NAME:-world}
 
