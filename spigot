@@ -94,6 +94,7 @@ fi
 if [ ! -f $MINECRAFT_HOME/ops.json ]; then
     echo "Adding $DEFAULT_OP to ops list."
     echo "$DEFAULT_OP" > $MINECRAFT_HOME/ops.txt
+    echo "$DEFAULT_OP" > $MINECRAFT_HOME/white-list.txt
 fi
 
 # Make sure the MINECRAFT_HOME and WORLD_DIR folders are owned by minecraft user.
