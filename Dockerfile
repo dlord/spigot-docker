@@ -17,10 +17,10 @@ ENV WORLD_DIR /var/lib/minecraft
 RUN groupadd -g 1000 minecraft && \
     useradd -g minecraft -u 1000 -r -M minecraft && \
     touch /run/first_time && \
-    mkdir -p $MINECRAFT_HOME/world $WORLD_DIR
+    mkdir -p $MINECRAFT_HOME/world $WORLD_DIR /usr/src/minecraft
 
 COPY spigot /usr/local/bin/
-ONBUILD COPY . /etc/minecraft
+ONBUILD COPY . /usr/src/minecraft
 
 EXPOSE 25565
 

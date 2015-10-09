@@ -43,13 +43,13 @@ build_server() {
 }
 
 first_run() {
-    # Sync files from /etc/minecraft to $MINECRAFT_HOME. Do this on container's first run.
+    # Sync files from /usr/src/minecraft to $MINECRAFT_HOME. Do this on container's first run.
     if [ -f "/run/first_time" ]; then
         # Ensure that only the relevant plugins are enabled on the server.
         mkdir -p $MINECRAFT_HOME/plugins
         rm $MINECRAFT_HOME/plugins/*.jar*
 
-        rsync -avhP /etc/minecraft/ $MINECRAFT_HOME
+        rsync -avhP /usr/src/minecraft/ $MINECRAFT_HOME
         rm /run/first_time
     fi
 
