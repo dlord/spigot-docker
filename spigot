@@ -50,7 +50,7 @@ first_run() {
         mkdir -p $MINECRAFT_HOME/plugins
         rm $MINECRAFT_HOME/plugins/*.jar*
 
-        rsync -avhP /usr/src/minecraft/ $MINECRAFT_HOME
+        rsync -avh /usr/src/minecraft/ $MINECRAFT_HOME
         rm /run/first_time
     fi
 
