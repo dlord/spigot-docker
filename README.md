@@ -296,7 +296,7 @@ For commit standards, I follow a similar style to the Linux Kernel. See section
 1.2 of the [How to Get Your Change Into the Linux Kernel][]. For examples and
 tips, check out [this guide by Chris Beams][].
 
-[Github issue]: https://github.com/dlord/minecraft-docker/issues
+[Github issue]: https://github.com/dlord/spigot-docker/issues
 [Minecraft EULA]: https://account.mojang.com/documents/minecraft_eula
 [How to Get Your Change Into the Linux Kernel]: https://www.kernel.org/doc/Documentation/SubmittingPatches
 [this guide by Chris Beams]: http://chris.beams.io/posts/git-commit/
