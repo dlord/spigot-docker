@@ -21,17 +21,18 @@ and enhancements.
 ### Starting an instance
 
     docker run \
-        --name minecraft-instance \
+        --name spigot-instance \
         -p 0.0.0.0:25565:25565 \
         -d \
+        -it \
         -e DEFAULT_OP=dinnerbone \
         -e MINECRAFT_EULA=true \
         dlord/spigot
 
-By default, this starts up a Minecraft 1.8.8 server instance. If you wish to
+By default, this starts up a Spigot 1.8.8 server instance. If you wish to
 start a different server version, you need to set the `MINECRAFT_VERSION`
 variable to the appropriate version. You will need to check Spigot's
-documentation to determine the supported Minecraft versions.
+documentation to determine the supported Spigot versions.
 
 You must set the `DEFAULT_OP` variable on startup. This should be your
 Minecraft username. The container will fail to run if this is not set.
@@ -46,6 +47,96 @@ When starting a container for the first time, it will check for the existence of
 the Spigot jar file. If this does not exist, it will download BuildTools and
 compile Spigot from source. As much as I want to provide the precompiled
 binaries, I am avoiding any legal complications.
+
+It is highly preferred to start the container with `-it`. This is needed in
+order to allow executing console commands via `docker exec`. This also allows
+Spigot to safely shutdown when stopping the container via `docker stop`. See
+the `Scripting` section for more details.
+
+#### Commands
+
+The image uses an entrypoint script called `spigot`, which allows you to
+execute preset commands. Should you attempt to execute an unrecognized command,
+it will treat it as a regular shell command.
+
+The commands are as follows:
+
+* `run` - This runs the Spigot server, and is the default command used by the
+  container. This command can accept additional parameters. Useful when
+  creating a new container via `docker create` or `docker run`
+* `permissions` - This updates the permissions of all related files and
+  folders. Useful when manually editing a file.
+* `console` - This executes a console command. This allows system administrators
+  to perform complex tasks via scripts. This feature is off by default. See the
+  `Scripting` section for more details and examples.
+
+Here are some examples on how to use these commands:
+
+**run - specify a different Spigot configuration file inside /opt/minecraft**
+
+    docker run \
+        --name spigot-instance \
+        -p 0.0.0.0:25565:25565 \
+        -d \
+        -it \
+        -e DEFAULT_OP=dinnerbone \
+        -e MINECRAFT_EULA=true \
+        dlord/spigot
+        run --spigot-settings spigot-test.yml
+
+**permissions - update file and folder permissions while a container is running**
+
+    docker exec spigot-instance spigot permissions
+
+#### Scripting
+
+Unlike other Spigot Docker Images, this image provides a way to execute console
+commands without attaching to the docker container. It lets system
+administrators perform much more complex tasks, such as managing the docker
+container from another docker container (docker-in-docker).
+
+For those who are used to running `docker attach` inside a `screen` or `tmux`
+session for scripting, this is going to be heaven.
+
+This feature can be enabled by pasing the `-it` parameter to `docker create` or
+`docker run`, which enables STDIN and TTY. This runs the Spigot server inside a
+`tmux` session. This also enables safe shutdown mode when the container is
+stopped.
+
+Once enabled, you may now execute console commands like so:
+
+    docker exec spigot-instance spigot console say hello everybody!
+
+Some warnings when using this feature:
+
+* **DO NOT USE `-it` ON `docker exec`!** For some reason, it crashes
+  the `tmux` session that drives this feature.
+* **Be careful when attaching to the console via `docker attach`**. You are
+  attaching to a `tmux` session running on the foreground with the footer
+  disabled. Do not try to detach from the `tmux` session using `CTRL-b d`,
+  otherwise this will stop the container. To detach from the container, use
+  `CTRL-p CTRL-q`, which is the standard escape sequence for `docker attach`.
+
+Here are is an example on how to notify players that the server will be shutdown
+after 60 seconds:
+
+    #!/bin/bash
+    docker exec spigot-instance spigot console say We will be shutting down the server in 60s!
+    docker exec spigot-instance spigot console say Stop whatever you are doing!
+    sleep 60
+    docker exec spigot-instance spigot console say We will be back in 1 hour!
+    sleep 5
+    
+    # The container will send the stop console command to the server for you, to
+    # ensure that the server is shutdown safely.
+    #
+    # Of course you can run this manually like so:
+    #
+    #     docker exec spigot-instance spigot console stop
+    #
+    # But this will restart the container if the restart policy is set to always.
+    docker stop -t 60 spigot-instance
+
 
 #### Spigot BuildTools Caveat
 
@@ -83,7 +174,7 @@ volume container. You can create one with the following command:
     docker run --name minecraft-data -v /var/lib/minecraft java:7 true
 
 The startup script updates the permissions of the data volumes before running
-Minecraft. You are free to modify the contents of these directories without
+Spigot. You are free to modify the contents of these directories without
 worrying about permissions.
 
 For some Spigot plugins, this location would cause unnecessary confusion due to
@@ -190,7 +281,7 @@ You can include them via the `MINECRAFT_OPTS` variable in your Dockerfile.
 
 ## Supported Docker versions
 
-This image has been tested on Docker version 1.1.1.
+This image has been tested on Docker version 1.9
 
 
 ## Feedback and Contributions

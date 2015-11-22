@@ -1,6 +1,7 @@
 #!/bin/bash
 
 SPIGOT_BUILDTOOLS_URL="https://hub.spigotmc.org/jenkins/job/BuildTools/lastSuccessfulBuild/artifact/target/BuildTools.jar"
+TMUX_SESSION=spigot
 MINECRAFT_VERSION=${MINECRAFT_VERSION:-1.8.8}
 MINECRAFT_JAR=${MINECRAFT_JAR:-"spigot-$MINECRAFT_VERSION.jar"}
 MINECRAFT_STARTUP_JAR=${MINECRAFT_STARTUP_JAR:-"$MINECRAFT_JAR"}
@@ -119,15 +120,41 @@ update_permissions() {
 }
 
 run_spigot() {
-    if [ "$TERM" == "dumb" ]; then
-        echo "Dumb term detected. Switching to noconsole mode."
-        CONSOLE_MODE="--noconsole"
-    fi
-
+    echo "TERM is set to $TERM"
     pushd $MINECRAFT_HOME > /dev/null
     echo "Running Minecraft"
     echo "MINECRAFT_OPTS: $MINECRAFT_OPTS"
-    exec gosu minecraft java $MINECRAFT_OPTS -jar $MINECRAFT_HOME/$MINECRAFT_STARTUP_JAR nogui $CONSOLE_MODE $@
+
+    MINECRAFT_COMMAND="gosu minecraft java $MINECRAFT_OPTS -jar $MINECRAFT_HOME/$MINECRAFT_STARTUP_JAR nogui"
+    PARAMS=$@
+
+    echo "Extra parameters: ${PARAMS[@]}"
+
+    if [ "$TERM" == "dumb" ]; then
+        >&2 echo "WARNING! Dumb term detected. Switching to noconsole mode."
+        >&2 echo "Safe shutdown must be done via /stop chat command."
+        MINECRAFT_COMMAND="$MINECRAFT_COMMAND --noconsole ${PARAMS[@]}"
+        exec $MINECRAFT_COMMAND
+    else
+        MINECRAFT_COMMAND="$MINECRAFT_COMMAND ${PARAMS[@]}"
+        tmux new -s $TMUX_SESSION "$MINECRAFT_COMMAND"
+    fi
+}
+
+console_command() {
+    COMMAND=$@
+    if [ "$TERM" == "dumb" ]; then
+        >&2 echo "Console command not supported on a dumb term."
+        exit 1
+    else
+        echo "Executing console command: ${COMMAND[@]}"
+        tmux send -t $TMUX_SESSION "${COMMAND[@]}" ENTER
+    fi
+}
+
+safe_shutdown() {
+    echo "Performing safe shutdown..."
+    console_command stop
 }
 
 case "$1" in
@@ -137,11 +164,16 @@ case "$1" in
         build_server
         first_run
         update_permissions
+        trap safe_shutdown EXIT
         run_spigot $@
         ;;
     permissions)
         shift 1
         update_permissions
+        ;;
+    console)
+        shift 1
+        console_command $@
         ;;
     *)
         exec "$@"
