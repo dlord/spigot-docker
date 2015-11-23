@@ -57,24 +57,13 @@ first_run() {
         rm /run/first_time
     fi
 
-    # Update server.properties
-    LEVEL_NAME=${LEVEL_NAME:-world}
-
-    if [ ! -z "$WORLD_DIR" ]; then
-        # UGLY HACK BECAUSE MINECRAFT IS STUPID! IT DOES NOT USE RELATIVE PATHS!
-        # MINECRAFT ALWAYS APPENDS ./ IN FRONT OF THE WORLD PATH!!!!!!!
-        # I assume that the Minecraft installation is in a second level dir from
-        # root (e.g. /opt/minecraft)
-        # Will need to find a better way.
-        LEVEL_NAME="../../$WORLD_DIR/$LEVEL_NAME"
-    fi
-
+    # Create the server.properties if it doesn't exist
     if [ ! -f "$MINECRAFT_HOME/server.properties" ]; then
         echo "Creating $MINECRAFT_HOME/server.properties"
         echo "generator-settings=$GENERATOR_SETTINGS" >> $MINECRAFT_HOME/server.properties
         echo "op-permission-level=${OP_PERMISSION_LEVEL:-4}" >> $MINECRAFT_HOME/server.properties
         echo "allow-nether=${ALLOW_NETHER:-true}" >> $MINECRAFT_HOME/server.properties
-        echo "level-name=$LEVEL_NAME" >> $MINECRAFT_HOME/server.properties
+        echo "level-name=${LEVEL_NAME:-world}" >> $MINECRAFT_HOME/server.properties
         echo "enable-query=${ENABLE_QUERY:-false}" >> $MINECRAFT_HOME/server.properties
         echo "allow-flight=${ALLOW_FLIGHT:-false}" >> $MINECRAFT_HOME/server.properties
         echo "announce-player-achievements=${ANNOUNCE_PLAYER_ACHIEVEMENTS:-true}" >> $MINECRAFT_HOME/server.properties
@@ -128,7 +117,7 @@ run_spigot() {
     echo "Running Minecraft"
     echo "MINECRAFT_OPTS: $MINECRAFT_OPTS"
 
-    MINECRAFT_COMMAND="gosu minecraft java $MINECRAFT_OPTS -jar $MINECRAFT_HOME/$MINECRAFT_STARTUP_JAR nogui"
+    MINECRAFT_COMMAND="gosu minecraft java $MINECRAFT_OPTS -jar $MINECRAFT_HOME/$MINECRAFT_STARTUP_JAR nogui --world-dir $WORLD_DIR"
     PARAMS=$@
 
     echo "Extra parameters: ${PARAMS[@]}"
