@@ -95,7 +95,7 @@ first_run() {
     if ! find $WORLD_DIR -mindepth 1 -print -quit | grep -q . && { find $MINECRAFT_HOME/world -mindepth 1 -print -quit | grep -q .; }; then
         echo "World template found in $MINECRAFT_HOME/world"
         echo "Creating new world in $WORLD_DIR"
-        cp -rf $MINECRAFT_HOME/world $WORLD_DIR
+        cp -rf $MINECRAFT_HOME/world* $WORLD_DIR
     fi
 
     # Create default ops.txt if ops.json does not exist yet.
