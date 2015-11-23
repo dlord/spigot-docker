@@ -10,14 +10,10 @@ RUN gpg --keyserver pool.sks-keyservers.net --recv-keys B42F6819007F00F88E364FD4
     && rm /usr/local/bin/gosu.asc \
     && chmod +x /usr/local/bin/gosu
 
-ENV MINECRAFT_HOME /opt/minecraft
-ENV MINECRAFT_OPTS -server -Xmx1024m -XX:MaxPermSize=256m -XX:+UseParNewGC -XX:+UseConcMarkSweepGC
-ENV WORLD_DIR /var/lib/minecraft
-
 RUN groupadd -g 1000 minecraft && \
     useradd -g minecraft -u 1000 -r -M minecraft && \
     touch /run/first_time && \
-    mkdir -p $MINECRAFT_HOME/world $WORLD_DIR /usr/src/minecraft
+    mkdir -p /opt/minecraft /var/lib/minecraft /usr/src/minecraft
 
 COPY spigot /usr/local/bin/
 COPY tmux.conf /root/.tmux.conf
