@@ -1,6 +1,7 @@
 #!/bin/bash
 
 MINECRAFT_HOME="/opt/minecraft"
+MINECRAFT_SRC="/usr/src/minecraft"
 MINECRAFT_VERSION=${MINECRAFT_VERSION:-1.8.8}
 MINECRAFT_JAR=${MINECRAFT_JAR:-"spigot-$MINECRAFT_VERSION.jar"}
 MINECRAFT_STARTUP_JAR=${MINECRAFT_STARTUP_JAR:-"$MINECRAFT_JAR"}
@@ -47,13 +48,13 @@ build_server() {
 }
 
 first_run() {
-    # Sync files from /usr/src/minecraft to $MINECRAFT_HOME. Do this on container's first run.
+    # Sync files from $MINECRAFT_SRC to $MINECRAFT_HOME. Do this on container's first run.
     if [ -f "/run/first_time" ]; then
         # Ensure that only the relevant plugins are enabled on the server.
         mkdir -p $MINECRAFT_HOME/plugins
         rm $MINECRAFT_HOME/plugins/*.jar*
 
-        rsync -avh /usr/src/minecraft/ $MINECRAFT_HOME
+        rsync -avh --exclude '/world*' $MINECRAFT_SRC/ $MINECRAFT_HOME
         rm /run/first_time
     fi
 
@@ -92,10 +93,10 @@ first_run() {
     fi
 
     # Copy world template if level folder is empty.
-    if ! find $WORLD_DIR -mindepth 1 -print -quit | grep -q . && { find $MINECRAFT_HOME/world -mindepth 1 -print -quit | grep -q .; }; then
+    if ! find $WORLD_DIR -mindepth 1 -print -quit | grep -q . && { find $MINECRAFT_SRC/world -mindepth 1 -print -quit | grep -q .; }; then
         echo "World template found in $MINECRAFT_HOME/world"
         echo "Creating new world in $WORLD_DIR"
-        cp -rf $MINECRAFT_HOME/world* $WORLD_DIR
+        cp -rf $MINECRAFT_SRC/world* $WORLD_DIR
     fi
 
     # Create default ops.txt if ops.json does not exist yet.
