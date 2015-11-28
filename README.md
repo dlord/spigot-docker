@@ -93,7 +93,7 @@ Here are some examples on how to use these commands:
 Unlike other Spigot Docker Images, this image provides a way to execute console
 commands without attaching to the docker container. It lets system
 administrators perform much more complex tasks, such as managing the docker
-container from another docker container (docker-in-docker).
+container from another docker container (e.g. deploying using Jenkins).
 
 For those who are used to running `docker attach` inside a `screen` or `tmux`
 session for scripting, this is going to be heaven.
@@ -117,7 +117,7 @@ Some warnings when using this feature:
   otherwise this will stop the container. To detach from the container, use
   `CTRL-p CTRL-q`, which is the standard escape sequence for `docker attach`.
 
-Here are is an example on how to notify players that the server will be shutdown
+Here is an example on how to notify players that the server will be shutdown
 after 60 seconds:
 
     #!/bin/bash
@@ -156,12 +156,15 @@ a new container with the appropriate `MINECRAFT_VERSION`.
 
 ### Data volumes
 
+The entrypoint script updates the permissions of the data volumes before
+running Spigot. You are free to modify the contents of these directories
+without worrying about permissions.
+
 There are two data volumes declared for this image:
 
 #### /opt/minecraft
 
-All server-related artifacts (jars, configs)' and world templates go
-here.
+All server-related artifacts (jars, configs)' go here.
 
 #### /var/lib/minecraft
 
@@ -172,14 +175,6 @@ The recommended approach to handling world data is to use a separate data
 volume container. You can create one with the following command:
 
     docker run --name minecraft-data -v /var/lib/minecraft java:7 true
-
-The startup script updates the permissions of the data volumes before running
-Spigot. You are free to modify the contents of these directories without
-worrying about permissions.
-
-For some Spigot plugins, this location would cause unnecessary confusion due to
-how Minecraft handles world paths. Should you wish to use the default location
-(under `/opt/minecraft`), you may need to provide your own `server.properties`.
 
 
 ### Environment Variables
@@ -258,21 +253,19 @@ This Docker image contains one `ONBUILD` trigger, which copies any local files
 to `/usr/src/minecraft`.
 
 When a container is started for the first time, the contents of this folder is
-copied to `MINECRAFT_HOME` via `rsync`. It will also ensure that the
-`MINECRAFT_HOME/plugins` folder exists, and it will clean out any plugin jar
-files to make way for new ones. This is the simplest way to roll out updates
-without going inside the data volume.
+copied to `MINECRAFT_HOME` via `rsync`, except for anything that starts with
+`world`. It will also ensure that the `MINECRAFT_HOME/plugins` folder exists,
+and it will clean out any plugin jar files to make way for new ones. This is
+the simplest way to roll out updates without going inside the data volume.
 
-### Home Folder
-
-This is where all server related artifacts go, and its default location is
-`/opt/minecraft`. This can be customized via the `MINECRAFT_HOME` environment
-variable.
+### World Templates
 
 This Docker image supports the use of world templates, which is useful for
-custom maps. You will want to copy your world template to `MINECRAFT_HOME/world`.
-During startup, it will check if `/var/lib/minecraft` is empty. If so, it will
-create a copy of the world template on this folder.
+packaging custom maps. World templates should always start with `world`, which
+has been a standard Minecraft convention (e.g. world, world_nether,
+world_the_end). Copy your world templates to `/usr/src/minecraft` via the
+`ONBUILD` trigger. During startup, it will check if `/var/lib/minecraft` is
+empty. If so, it will create a copy of the world template on this folder.
 
 ### JVM Arguments
 
