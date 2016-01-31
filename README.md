@@ -13,7 +13,7 @@ and enhancements.
 
 ## Base Docker image
 
-* java:7
+* java:8
 
 
 ## How to use this image
@@ -174,7 +174,7 @@ building Docker images with a world template (useful for custom maps).
 The recommended approach to handling world data is to use a separate data
 volume container. You can create one with the following command:
 
-    docker run --name minecraft-data -v /var/lib/minecraft java:7 true
+    docker run --name minecraft-data -v /var/lib/minecraft java:8 true
 
 
 ### Environment Variables
